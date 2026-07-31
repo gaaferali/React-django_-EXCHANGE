@@ -1,0 +1,27 @@
+# Python virtual environment 
+venv/
+env/
+
+# Python cache files 
+__pycache__
+/*.pyc
+
+# Environment variables (secrets)
+.env
+
+# Django database 
+db.sqlite3
+
+# Uploaded files media/
+
+# VS Code settings
+.vscode/
+
+# Node modules node_modules/
+
+# React build files
+dist/
+build/
+
+# Logs 
+*.log
