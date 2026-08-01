@@ -34,6 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 INSTALLED_APPS = [
     'users',
+    'listings',
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
