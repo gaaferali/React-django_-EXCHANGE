@@ -12,6 +12,7 @@ Styling: Bootstrap 5
 Package Manager: NPM
 backend framework: django
 ## Features
+- chat real time using channel and socket
 - User authentication (JWT)
 - CRUD operations
 - Responsive UI
@@ -21,24 +22,19 @@ backend framework: django
 **Frontend**
 - React
 - Vite
-- Tailwind CSS
+- typescript
+- bootstrab CSS
 
 **Backend**
+- chat real time using channel and socket
 - Django
 - Django REST Framework
 - sqlLite
 - JWT Authentication
 
+
 ## Installation
 
-### Backend
-
-cd backend
-python -m venv venv
-venv\Scripts\activate      # Windows
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
 ```
 
 ### Frontend
@@ -46,6 +42,15 @@ python manage.py runserver
 cd frontend
 npm install
 npm run dev
+
+### Backend
+
+cd backend
+python -m venv venv
+venv\Scripts\activate  
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
 ```
 
 Frontend 
