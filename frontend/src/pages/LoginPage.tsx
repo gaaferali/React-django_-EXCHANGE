@@ -1,109 +1,14 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { MESSAGES, UI_CONSTANTS, VALIDATION_RULES } from '../constants/config';
+import { useState, type FormEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { apiError } from '../api/apiService';
 import Alert from '../components/Alert';
-import './Auth.css';
+import { useAuth } from '../context/AuthContext';
 
-const LoginPage: React.FC = () => {
+export default function LoginPage() {
+  const { login } = useAuth();
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
-  const [email, setEmail] = useState('demo@example.com');
-  const [password, setPassword] = useState('demo1234');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    // Validate input
-    if (!email || !password) {
-      setError(MESSAGES.REQUIRED_FIELD);
-      return;
-    }
-
-    if (!VALIDATION_RULES.EMAIL_REGEX.test(email)) {
-      setError(MESSAGES.INVALID_EMAIL);
-      return;
-    }
-
-    try {
-      await login(email, password);
-      setSuccess(MESSAGES.LOGIN_SUCCESS);
-      setTimeout(() => navigate('/'), 1000);
-    } catch (err: any) {
-      setError(err.message || MESSAGES.LOGIN_FAILED);
-    }
-  };
-
-  return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1 className="text-center mb-4">{UI_CONSTANTS.PAGE_TITLES.LOGIN}</h1>
-        <p className="text-center text-muted mb-3">
-          Demo login: <strong>demo@example.com</strong> / <strong>demo1234</strong>
-        </p>
-
-        {error && <Alert type="danger" message={error} onClose={() => setError('')} />}
-        {success && <Alert type="success" message={success} onClose={() => setSuccess('')} />}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label htmlFor="email" className="form-label">
-              Email Address
-            </label>
-            <input
-              type="email"
-              className="form-control"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="mb-3">
-            <label htmlFor="password" className="form-label">
-              Password
-            </label>
-            <input
-              type="password"
-              className="form-control"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              disabled={isLoading}
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="btn btn-primary w-100 mb-3"
-            disabled={isLoading}
-          >
-            {isLoading ? 'Logging in...' : UI_CONSTANTS.BUTTONS.LOGIN}
-          </button>
-        </form>
-
-        <p className="text-center">
-          Don't have an account?{' '}
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/register');
-            }}
-          >
-            Register here
-          </a>
-        </p>
-      </div>
-    </div>
-  );
-};
-
-export default LoginPage;
+  const location = useLocation();
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const submit = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(''); try { await login(email, password); navigate((location.state as { from?: string } | null)?.from || '/dashboard', { replace: true }); } catch (reason) { setError(apiError(reason)); } finally { setBusy(false); } };
+  return <div className="auth-page"><section className="auth-panel"><div className="auth-heading"><span className="eyebrow">Welcome back</span><h1>Sign in to your account</h1><p>Manage listings, offers, saved furniture, and conversations.</p></div>{error && <Alert message={error} />}<form onSubmit={submit} className="stack-form"><label>Email address<input type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></label><button className="button button-primary button-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button></form><p className="auth-switch">New to Furnish Exchange? <Link to="/register">Create an account</Link></p></section><aside className="auth-aside"><span>Buy thoughtfully.</span><strong>Exchange directly.</strong><p>Keep useful furniture moving through your community.</p></aside></div>;
+}

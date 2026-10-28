@@ -1,46 +1,11 @@
-import React, { useEffect } from 'react';
+import { CheckCircle2, CircleAlert, X } from 'lucide-react';
 
-interface AlertProps {
-  type: 'success' | 'danger' | 'warning' | 'info';
-  message: string;
-  onClose?: () => void;
-  dismissible?: boolean;
-  autoClose?: boolean;
-  autoCloseTime?: number;
-}
-
-const Alert: React.FC<AlertProps> = ({
-  type,
-  message,
-  onClose,
-  dismissible = true,
-  autoClose = true,
-  autoCloseTime = 5000,
-}) => {
-  useEffect(() => {
-    if (autoClose && onClose) {
-      const timer = setTimeout(onClose, autoCloseTime);
-      return () => clearTimeout(timer);
-    }
-  }, [autoClose, autoCloseTime, onClose]);
-
+export default function Alert({ type = 'error', message, onClose }: { type?: 'error' | 'success' | 'info'; message: string; onClose?: () => void }) {
   return (
-    <div
-      className={`alert alert-${type} ${dismissible ? 'alert-dismissible fade show' : ''}`}
-      role="alert"
-    >
-      {message}
-      {dismissible && (
-        <button
-          type="button"
-          className="btn-close"
-          data-bs-dismiss="alert"
-          aria-label="Close"
-          onClick={onClose}
-        ></button>
-      )}
+    <div className={`notice notice-${type}`} role={type === 'error' ? 'alert' : 'status'}>
+      {type === 'success' ? <CheckCircle2 size={19} /> : <CircleAlert size={19} />}
+      <span>{message}</span>
+      {onClose && <button type="button" onClick={onClose} aria-label="Dismiss"><X size={17} /></button>}
     </div>
   );
-};
-
-export default Alert;
+}

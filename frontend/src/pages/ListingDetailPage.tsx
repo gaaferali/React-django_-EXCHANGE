@@ -1,142 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import apiService from '../api/apiService';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { ArrowLeft, Heart, MapPin, MessageCircle, Repeat2, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import api, { apiError } from '../api/apiService';
+import placeholder from '../assets/furniture-placeholder.svg';
 import Alert from '../components/Alert';
-import { FurnitureItem } from '../types';
-import { PLACEHOLDERS } from '../constants/uiOptions';
-import { UI_CONSTANTS, MESSAGES } from '../constants/config';
+import { formatPrice } from '../components/FurnitureCard';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import type { FurnitureItem } from '../types';
 
-const ListingDetailPage: React.FC = () => {
-  const { itemID } = useParams<{ itemID: string }>();
-  const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const [listing, setListing] = useState<FurnitureItem | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [messageContent, setMessageContent] = useState('');
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-
-  useEffect(() => {
-    fetchListing();
-  }, [itemID]);
-
-  const fetchListing = async () => {
-    try {
-      setIsLoading(true);
-      setError('');
-      const data = await apiService.getListingById(parseInt(itemID!));
-      setListing(data);
-    } catch (err: any) {
-      setError(err.message || MESSAGES.NOT_FOUND);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!isAuthenticated) {
-      navigate('/login');
-      return;
-    }
-
-    if (!messageContent.trim()) {
-      alert('Please enter a message');
-      return;
-    }
-
-    try {
-      setIsSendingMessage(true);
-      await apiService.sendMessage(listing!.userID, messageContent);
-      setMessageContent('');
-      alert(MESSAGES.MESSAGE_SENT);
-    } catch (err: any) {
-      setError(err.message || MESSAGES.SERVER_ERROR);
-    } finally {
-      setIsSendingMessage(false);
-    }
-  };
-
-  if (isLoading) {
-    return <LoadingSpinner fullScreen message="Loading listing..." />;
-  }
-
-  if (!listing) {
-    return (
-      <div className="container py-4">
-        <Alert type="danger" message={error || MESSAGES.NOT_FOUND} />
-        <button className="btn btn-primary" onClick={() => navigate('/')}>
-          Back to Listings
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container py-4">
-      <button className="btn btn-secondary mb-4" onClick={() => navigate('/')}>
-        ← Back
-      </button>
-
-      <div className="row">
-        <div className="col-lg-6 mb-4">
-          <img
-            src={listing.imagePath || PLACEHOLDERS.DEFAULT_FURNITURE_IMAGE}
-            alt={listing.title}
-            className="img-fluid rounded"
-            style={{ maxHeight: '500px', objectFit: 'cover' }}
-          />
-        </div>
-
-        <div className="col-lg-6">
-          <h1 className="mb-2">{listing.title}</h1>
-          <div className="mb-3">
-            <span className={`badge bg-primary me-2`}>{listing.category}</span>
-            <span className="badge bg-secondary me-2">{listing.condition}</span>
-            <span className={`badge status-${listing.status}`}>{listing.status}</span>
-          </div>
-
-          <h3 className="text-success mb-4">${listing.price.toFixed(2)}</h3>
-
-          <p className="mb-4">{listing.description}</p>
-
-          {isAuthenticated && user?.userID !== listing.userID && (
-            <div className="card mb-4 p-4">
-              <h5 className="card-title mb-3">Contact Seller</h5>
-              <textarea
-                className="form-control mb-3"
-                rows={3}
-                placeholder="Write your message..."
-                value={messageContent}
-                onChange={(e) => setMessageContent(e.target.value)}
-                disabled={isSendingMessage}
-              ></textarea>
-              <button
-                className="btn btn-primary w-100"
-                onClick={handleSendMessage}
-                disabled={isSendingMessage}
-              >
-                {isSendingMessage ? 'Sending...' : 'Send Message'}
-              </button>
-            </div>
-          )}
-
-          {user?.userID === listing.userID && (
-            <div className="alert alert-info">
-              <p className="mb-0">This is your listing!</p>
-              <button
-                className="btn btn-sm btn-warning mt-2 me-2"
-                onClick={() => navigate(`/edit-listing/${listing.itemID}`)}
-              >
-                Edit
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default ListingDetailPage;
+export default function ListingDetailPage() {
+  const { listingId } = useParams(); const navigate = useNavigate(); const { user, isAuthenticated } = useAuth();
+  const [listing, setListing] = useState<FurnitureItem>(); const [ownListings, setOwnListings] = useState<FurnitureItem[]>([]); const [activeImage, setActiveImage] = useState(''); const [error, setError] = useState(''); const [notice, setNotice] = useState(''); const [busy, setBusy] = useState(false); const [offeredItemId, setOfferedItemId] = useState(''); const [message, setMessage] = useState('');
+  useEffect(() => { let active = true; api.listing(Number(listingId)).then((item) => { if (active) { setListing(item); setActiveImage(item.cover_image_url || item.images[0]?.url || placeholder); } }).catch((reason) => active && setError(apiError(reason))); return () => { active = false; }; }, [listingId]);
+  useEffect(() => { if (isAuthenticated) api.myListings({ status: 'available', page_size: 48 }).then((response) => setOwnListings(response.results.filter((item) => item.listing_type !== 'sale'))).catch(() => undefined); }, [isAuthenticated]);
+  const gallery = useMemo(() => { if (!listing) return []; return Array.from(new Set([listing.cover_image_url, ...listing.images.map((image) => image.url)].filter(Boolean) as string[])); }, [listing]);
+  const ownListing = listing?.owner.id === user?.id;
+  const requireAuth = () => { if (!isAuthenticated) { navigate('/login', { state: { from: `/listings/${listingId}` } }); return false; } return true; };
+  const toggleFavorite = async () => { if (!listing || !requireAuth()) return; try { await api.setFavorite(listing.id, !listing.is_favorited); setListing({ ...listing, is_favorited: !listing.is_favorited }); } catch (reason) { setError(apiError(reason)); } };
+  const startConversation = async () => { if (!listing || !requireAuth()) return; setBusy(true); try { const conversation = await api.createConversation({ recipient_id: listing.owner.id, listing_id: listing.id }); navigate(`/messages/${conversation.id}`); } catch (reason) { setError(apiError(reason)); } finally { setBusy(false); } };
+  const sendRequest = async (event: FormEvent, requestType: 'purchase' | 'exchange') => { event.preventDefault(); if (!listing || !requireAuth()) return; setBusy(true); setError(''); try { await api.createRequest({ listing_id: listing.id, request_type: requestType, offered_item_id: requestType === 'exchange' ? Number(offeredItemId) : undefined, message }); setNotice(`${requestType === 'purchase' ? 'Purchase' : 'Exchange'} request sent to ${listing.owner.name}.`); setMessage(''); } catch (reason) { setError(apiError(reason)); } finally { setBusy(false); } };
+  if (error && !listing) return <div className="container page-section"><Alert message={error} /><Link to="/marketplace" className="text-link"><ArrowLeft size={17} /> Back to marketplace</Link></div>;
+  if (!listing) return <LoadingSpinner fullScreen message="Loading listing" />;
+  return <div className="container page-section"><Link to="/marketplace" className="back-link"><ArrowLeft size={17} /> Back to marketplace</Link>{error && <Alert message={error} onClose={() => setError('')} />}{notice && <Alert type="success" message={notice} onClose={() => setNotice('')} />}<div className="detail-grid"><section className="gallery"><div className="gallery-main"><img src={activeImage || placeholder} alt={activeImage === placeholder ? '' : listing.title} /></div>{gallery.length > 1 && <div className="gallery-thumbs">{gallery.map((image) => <button key={image} className={activeImage === image ? 'active' : ''} type="button" onClick={() => setActiveImage(image)}><img src={image} alt="" /></button>)}</div>}</section><section className="detail-info"><div className="detail-labels"><span>{listing.category_display}</span><span>{listing.condition_display}</span><span className={`status status-${listing.status}`}>{listing.status}</span></div><h1>{listing.title}</h1><div className="detail-price">{formatPrice(listing.price, listing.listing_type)}</div><div className="detail-location"><MapPin size={17} /> {listing.location || listing.owner.location || 'Location not provided'}</div><p className="detail-description">{listing.description}</p><dl className="detail-specs"><div><dt>Condition</dt><dd>{listing.condition_display}</dd></div><div><dt>Available for</dt><dd>{listing.listing_type_display}</dd></div><div><dt>Listed</dt><dd>{new Date(listing.created_at).toLocaleDateString()}</dd></div></dl>{ownListing ? <div className="owner-actions"><Link className="button button-primary" to={`/listings/${listing.id}/edit`}>Edit listing</Link><Link className="button button-secondary" to="/requests">View offers</Link></div> : <><div className="detail-actions"><button className="button button-secondary" type="button" onClick={toggleFavorite}><Heart size={18} fill={listing.is_favorited ? 'currentColor' : 'none'} /> {listing.is_favorited ? 'Saved' : 'Save'}</button><button className="button button-secondary" type="button" onClick={startConversation} disabled={busy}><MessageCircle size={18} /> Message seller</button></div><div className="offer-panel"><h2>Make an offer</h2>{(listing.listing_type === 'sale' || listing.listing_type === 'both') && <form onSubmit={(event) => sendRequest(event, 'purchase')}><ShoppingBag size={20} /><div><strong>Request to purchase</strong><span>The listed price is recorded when you send the request.</span></div><input aria-label="Message to seller" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Optional note" /><button className="button button-primary" disabled={busy}>Send purchase request</button></form>}{(listing.listing_type === 'exchange' || listing.listing_type === 'both') && <form onSubmit={(event) => sendRequest(event, 'exchange')}><Repeat2 size={20} /><div><strong>Propose an exchange</strong><span>Offer one of your available exchange listings.</span></div><select required value={offeredItemId} onChange={(event) => setOfferedItemId(event.target.value)}><option value="">Choose an item to offer</option>{ownListings.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select><button className="button button-primary" disabled={busy || !offeredItemId}>Send exchange proposal</button></form>}</div></>}<aside className="seller-card"><div className="avatar">{listing.owner.name.charAt(0).toUpperCase()}</div><div><span>Listed by</span><strong>{listing.owner.name}</strong><small>{listing.owner.location || 'Marketplace member'}</small></div><ShieldCheck size={21} aria-label="Authenticated marketplace account" /></aside></section></div></div>;
+}
