@@ -1,28 +1,12 @@
-import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 
-interface ProtectedRouteProps {
-  requireAdmin?: boolean;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requireAdmin = false }) => {
-  const { isAuthenticated, isLoading, token } = useAuth();
-
-  if (isLoading) {
-    return <LoadingSpinner fullScreen message="Loading..." />;
-  }
-
-  if (requireAdmin && token) {
-    //  verify the user has admin role
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+export default function ProtectedRoute({ admin = false }: { admin?: boolean }) {
+  const { user, loading, isAuthenticated } = useAuth();
+  const location = useLocation();
+  if (loading) return <LoadingSpinner fullScreen message="Restoring your session" />;
+  if (!isAuthenticated) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (admin && !user?.is_staff) return <Navigate to="/dashboard" replace />;
   return <Outlet />;
-};
-
-export default ProtectedRoute;
+}

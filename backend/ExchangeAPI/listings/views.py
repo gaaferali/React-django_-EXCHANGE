@@ -1,114 +1,92 @@
-#from django.shortcuts import render
-#from django.db.migrations import serializer
-
-#from django.db.migrations import serializer
-#from matplotlib import category
-
-from rest_framework import serializers
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.db.models import Prefetch
+from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
-from .models import FurnitureItem
-from .serializers import FurnitureItemSerializer, CreateListingSerializer
-from rest_framework.pagination import PageNumberPagination
 
-class StandardPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'pageSize'
+from .filters import FurnitureItemFilter
+from .models import Favorite, FurnitureItem, ListingImage
+from .permissions import IsOwnerOrAdminOrReadOnly
+from .serializers import FurnitureItemSerializer
 
 
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def get_all_listings(request):
-    paginator = StandardPagination()
-    listings = FurnitureItem.objects.filter(
-    statues='new'
-    ).order_by('-created_at')
-    page = paginator.paginate_queryset(listings, request)
-    serializer = FurnitureItemSerializer(page, many=True)
-    return paginator.get_paginated_response(serializer.data)
+class FurnitureItemViewSet(viewsets.ModelViewSet):
+    serializer_class = FurnitureItemSerializer
+    filterset_class = FurnitureItemFilter
+    search_fields = ("title", "description", "location", "user__name")
+    ordering_fields = ("created_at", "updated_at", "price", "title")
+    ordering = ("-created_at",)
+    permission_classes = (IsOwnerOrAdminOrReadOnly,)
 
-    #serializer = FurnitureItemSerializer(listings, many=True)
-    #return Response(serializer.data, status=status.HTTP_200_OK)
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def get_listing_by_id(request, listing_id):
-    try:
-        listing = FurnitureItem.objects.get(id=listing_id)
-        serializer = FurnitureItemSerializer(listing)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    except FurnitureItem.DoesNotExist:
-        return Response({'error': 'Listing not found'},
-                        status=status.HTTP_404_NOT_FOUND)
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_listing(request):
-    serializer = CreateListingSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save(user=request.user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated])
-def update_listing(request, listing_id):
-    try:
-        listing = FurnitureItem.objects.get(id=listing_id, user=request.user)
-    except FurnitureItem.DoesNotExist:
-        return Response({'error': 'Listing not found or you do not have permission to edit it.'},
-                        status=status.HTTP_404_NOT_FOUND)
+    def get_queryset(self):
+        queryset = FurnitureItem.objects.select_related("user").prefetch_related("images")
+        if self.action == "list":
+            return queryset.filter(status=FurnitureItem.Status.AVAILABLE, user__is_active=True)
+        return queryset.exclude(status=FurnitureItem.Status.INACTIVE)
 
-    serializer = CreateListingSerializer(listing, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def delete_listing(request,listing_id):
-    try:
-        listing= FurnitureItem.objects.get(id=listing_id, user=request.user)
-        if str(listing.userID) != str(request.user.userID):
-            return Response(
-                {'error': 'Not authorized'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        listing.delete()
-        return Response({'message': 'Listing deleted successfully'},
-                        status=status.HTTP_200_OK)
-    except FurnitureItem.DoesNotExist:
-        return Response({'error': 'Listing not found or you do not have permission to delete it.'},
-                        status=status.HTTP_404_NOT_FOUND)
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def get_listings_by_category(request):
-    try:
-        paginator= StandardPagination()
-        category = request.data.get("category")
-        listing= FurnitureItem.objects.filter(
-        category= category,
-        statues='new'
-        ).order_by('-created_at')
-        #serializer=FurnitureItemSerializer(listing,many=True)
-        page= paginator.paginate_queryset(listing,request)
-        serializer= FurnitureItemSerializer(page,many=True)
-        return paginator.get_paginated_response(serializer.data)
-    except FurnitureItem.DoesNotExist:
-        return Response({'error': 'Listing not found or you do not have permission to view it.'},
-                        status=status.HTTP_404_NOT_FOUND)   
-@api_view(['GET'])
-@permission_classes([AllowAny])
-def get_listings_by_user(request, user_id):
-    try:
-        paginator= StandardPagination()
-        listing= FurnitureItem.objects.filter(
-        user_id= user_id
-        ).order_by('-created_at')
-        #serializer=FurnitureItemSerializer(listing,many=True)
-        page= paginator.paginate_queryset(listing,request)
-        serializer= FurnitureItemSerializer(page,many=True)
-        return paginator.get_paginated_response(serializer.data)
-    except FurnitureItem.DoesNotExist:
-        return Response({'error': 'Listing not found or you do not have permission to view it.'},
-                        status=status.HTTP_404_NOT_FOUND) 
-# Create your views here.
+    def get_permissions(self):
+        if self.action in {"create", "mine", "favorites", "favorite"}:
+            return [IsAuthenticated()]
+        if self.action in {"metadata", "list", "retrieve"}:
+            return [AllowAny()]
+        return super().get_permissions()
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        listing = self.get_object()
+        self.check_object_permissions(request, listing)
+        listing.status = FurnitureItem.Status.INACTIVE
+        listing.save(update_fields=("status", "updated_at"))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=("get",))
+    def mine(self, request):
+        queryset = FurnitureItem.objects.filter(user=request.user).select_related("user").prefetch_related("images")
+        page = self.paginate_queryset(queryset)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+    @action(detail=False, methods=("get",))
+    def favorites(self, request):
+        queryset = (
+            FurnitureItem.objects.filter(favorited_by__user=request.user)
+            .select_related("user")
+            .prefetch_related("images")
+        )
+        page = self.paginate_queryset(queryset)
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+    @action(detail=True, methods=("post", "delete"))
+    def favorite(self, request, pk=None):
+        listing = self.get_object()
+        if request.method == "POST":
+            Favorite.objects.get_or_create(user=request.user, listing=listing)
+            return Response({"is_favorited": True}, status=status.HTTP_201_CREATED)
+        Favorite.objects.filter(user=request.user, listing=listing).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=("get",), permission_classes=(AllowAny,))
+    def metadata(self, _request):
+        return Response(
+            {
+                "categories": [{"value": value, "label": label} for value, label in FurnitureItem.Category.choices],
+                "conditions": [{"value": value, "label": label} for value, label in FurnitureItem.Condition.choices],
+                "listing_types": [{"value": value, "label": label} for value, label in FurnitureItem.ListingType.choices],
+            }
+        )
+
+
+class AdminListingViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
+    permission_classes = (IsAdminUser,)
+    serializer_class = FurnitureItemSerializer
+    queryset = FurnitureItem.objects.select_related("user").prefetch_related("images").all()
+    search_fields = ("title", "description", "user__name", "user__email")
+    filterset_fields = ("status", "category", "listing_type")
+
+    @action(detail=True, methods=("post",))
+    def moderate(self, request, pk=None):
+        listing = self.get_object()
+        listing.status = FurnitureItem.Status.INACTIVE
+        listing.save(update_fields=("status", "updated_at"))
+        return Response(self.get_serializer(listing).data)

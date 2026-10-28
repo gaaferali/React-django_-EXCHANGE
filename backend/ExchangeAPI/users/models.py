@@ -1,30 +1,38 @@
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
-from datetime import datetime
-from django.contrib.auth.hashers import make_password, check_password
-from django.contrib.auth.models import AbstractBaseUser
-class User(AbstractBaseUser):
-    username= None
-    name = models.CharField(max_length=150, unique=True)
+
+from common.validators import validate_image_upload
+from .managers import UserManager
+
+
+class User(AbstractBaseUser, PermissionsMixin):
+    name = models.CharField(max_length=150)
     email = models.EmailField(unique=True)
-    password = models.CharField(max_length=128)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
-    is_Banned = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    is_banned = models.BooleanField(default=False)
     profile_image = models.ImageField(
-        upload_to='profile_images/',
+        upload_to="profile_images/%Y/%m/",
         null=True,
-        blank=True)
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDSE = []
-    
-    def set_password(self, raw_password):
-        self.password = make_password(raw_password)
+        blank=True,
+        validators=[validate_image_upload],
+    )
+    bio = models.CharField(max_length=500, blank=True)
+    location = models.CharField(max_length=120, blank=True)
 
-    def check_password(self, raw_password):
-        return check_password(raw_password, self.password)
+    objects = UserManager()
 
-    def __str__(self):
-        return self.name
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["name"]
 
-# Create your models here.
+    class Meta:
+        ordering = ("-created_at",)
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name or self.email

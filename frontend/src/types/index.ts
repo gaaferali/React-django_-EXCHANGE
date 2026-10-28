@@ -1,156 +1,135 @@
-// User related types
-export interface User {
-  userID: number;
-  email: string;
+export interface PublicUser {
+  id: number;
   name: string;
-  profileImage?: string;
-  createdAt?: string;
+  profile_image_url: string | null;
+  location: string;
+}
+
+export interface User extends PublicUser {
+  email: string;
+  bio: string;
+  is_staff: boolean;
+  is_banned: boolean;
+  is_active?: boolean;
+  created_at: string;
+  last_login?: string | null;
 }
 
 export interface AuthResponse {
-  token: string;
+  access: string;
+  refresh: string;
   user: User;
-  message: string;
 }
 
-export interface LoginRequest {
-  email: string;
-  password: string;
+export type ListingStatus = 'available' | 'reserved' | 'sold' | 'exchanged' | 'inactive';
+export type ListingType = 'sale' | 'exchange' | 'both';
+
+export interface ListingImage {
+  id: number;
+  url: string;
+  position: number;
 }
 
-export interface RegisterRequest {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword?: string;
-}
-
-// Furniture Listing types
 export interface FurnitureItem {
-  itemID: number;
-  userID: number;
+  id: number;
+  owner: PublicUser;
   title: string;
   description: string;
+  price: string;
+  cover_image_url: string | null;
+  images: ListingImage[];
+  status: ListingStatus;
+  condition: string;
+  condition_display: string;
   category: string;
-  condition: 'Used' | 'Like New' | 'Excellent';
-  price: number;
-  imagePath: string;
-  imageFile?: File;
-  status: 'available' | 'sold' | 'exchanged';
-  createdAt?: string;
-  updatedAt?: string;
+  category_display: string;
+  listing_type: ListingType;
+  listing_type_display: string;
+  location: string;
+  is_featured: boolean;
+  is_favorited: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface CreateListingRequest {
+export interface ListingInput {
   title: string;
   description: string;
+  price: string;
   category: string;
   condition: string;
-  price: number;
-  imageFile: File;
-}
-
-export interface UpdateListingRequest {
-  itemID: number;
-  title: string;
-  description: string;
-  category: string;
-  condition: string;
-  price: number;
-  imageFile?: File;
-}
-
-// Messaging types
-export interface Message {
-  messageID: number;
-  senderID: number;
-  receiverID: number;
-  content: string;
-  timestamp: string;
-  senderName?: string;
-  isRead?: boolean;
-}
-
-export interface SendMessageRequest {
-  receiverID: number;
-  content: string;
-}
-
-// Exchange Request types
-export interface ExchangeRequest {
-  requestID: number;
-  offeredItemID: number;
-  requestedItemID: number;
-  senderID: number;
-  receiverID: number;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateExchangeRequest {
-  offeredItemID: number;
-  requestedItemID: number;
-}
-
-// Search & Filter types
-export interface SearchFilter {
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  condition?: string;
-  searchTerm?: string;
-}
-
-// Admin types
-export interface AdminUser {
-  adminID: number;
-  email: string;
-  role: 'admin' | 'moderator';
-  createdAt?: string;
-}
-
-export interface AdminStats {
-  totalUsers: number;
-  totalListings: number;
-  totalMessages: number;
-  reportedContent: number;
-  bannedUsers: number;
-}
-
-export interface ReportedContent {
-  reportID: number;
-  contentType: 'listing' | 'user' | 'message';
-  contentID: number;
-  reason: string;
-  status: 'pending' | 'reviewed' | 'resolved';
-}
-
-// Auth Context types
-export interface AuthContextType {
-  user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  updateUser: (user: User) => void;
-}
-
-// API Response types
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
+  listing_type: ListingType;
+  location: string;
+  cover_image?: File;
+  uploaded_images?: File[];
 }
 
 export interface PaginatedResponse<T> {
-  success: boolean;
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface Choice {
+  value: string;
+  label: string;
+}
+
+export interface ListingMetadata {
+  categories: Choice[];
+  conditions: Choice[];
+  listing_types: Choice[];
+}
+
+export type RequestType = 'purchase' | 'exchange';
+export type RequestStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled';
+
+export interface TransactionRequest {
+  id: number;
+  requester: PublicUser;
+  recipient: PublicUser;
+  listing: FurnitureItem;
+  offered_item: FurnitureItem | null;
+  request_type: RequestType;
+  offered_amount: string | null;
+  message: string;
+  status: RequestStatus;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}
+
+export interface Message {
+  id: number;
+  sender: PublicUser;
+  body: string;
+  created_at: string;
+  read_at: string | null;
+}
+
+export interface Conversation {
+  id: number;
+  participant_one: PublicUser;
+  participant_two: PublicUser;
+  other_participant: PublicUser;
+  listing: FurnitureItem | null;
+  transaction_request_id: number | null;
+  last_message: Message | null;
+  unread_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminStats {
+  users: number;
+  active_listings: number;
+  pending_requests: number;
+  messages: number;
+  suspended_users: number;
+}
+
+export interface ApiValidationError {
+  detail?: string;
+  errors?: Record<string, string[] | string>;
 }

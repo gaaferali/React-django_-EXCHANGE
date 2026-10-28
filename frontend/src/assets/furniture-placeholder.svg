@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" role="img" aria-labelledby="title description">
+  <title id="title">Furniture image placeholder</title>
+  <description id="description">A simple line illustration of a sofa in a room.</description>
+  <rect width="800" height="600" fill="#f0eee9"/>
+  <path d="M90 470h620" stroke="#d4cec3" stroke-width="10" stroke-linecap="round"/>
+  <path d="M205 275c0-35 28-63 63-63h264c35 0 63 28 63 63v44h24c25 0 45 20 45 45v106H136V364c0-25 20-45 45-45h24v-44Z" fill="#c7b8a2"/>
+  <path d="M205 319h390v151H205z" fill="#d8cbbc"/>
+  <path d="M197 470v35M603 470v35" stroke="#756b5d" stroke-width="18" stroke-linecap="round"/>
+  <path d="M400 322v148" stroke="#b4a48f" stroke-width="7"/>
+</svg>

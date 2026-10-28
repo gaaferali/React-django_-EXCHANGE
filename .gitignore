@@ -1,27 +1,34 @@
-# Python virtual environment 
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
 venv/
 env/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Python cache files 
-__pycache__
-/*.pyc
-
-# Environment variables (secrets)
-.env
-
-# Django database 
+# Django local state
 db.sqlite3
+media/
+staticfiles/
+.test-media/
 
-# Uploaded files media/
-
-# VS Code settings
-.vscode/
-
-# Node modules node_modules/
-
-# React build files
+# Node and Vite
+node_modules/
 dist/
 build/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
-# Logs 
+# Tools and editors
+.vscode/
+.idea/
+graphify-out/
 *.log
